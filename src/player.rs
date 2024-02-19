@@ -1,31 +1,36 @@
 use crate::coin::Wallet;
+use crate::components::ColliderBundle;
+use crate::components::GroundDetection;
 use bevy::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::prelude::*;
-use crate::components::ColliderBundle;
-use crate::components::GroundDetection;
 
+//Convert to seldom_state
+enum player_state {
+    Idle,
+    Walking,
+    Jumping,
+    Falling
+}
 
-const MOVEMENT_SPEED: f32 = 100.;
-
+const MOVEMENT_SPEED: f32 = 1.;
+const JUMP_HEIGHT: f32 = 100.;
 
 /// Plugin for spawning the player and controlling them.
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (move_player, camera_fit_inside_current_level))
+        app.add_systems(Update, (camera_fit_inside_current_level,change_character_position, modify_character_controller))
             .register_ldtk_entity::<PlayerBundle>("Player");
     }
 }
 
-
 #[derive(Clone, Default, Copy, Eq, PartialEq, Debug, Component)]
 pub struct Player;
 
-
 #[derive(Default, Bundle, LdtkEntity)]
-pub struct PlayerBundle {
+struct PlayerBundle {
     pub wallet: Wallet,
     #[sprite_sheet_bundle]
     sprite_sheet_bundle: SpriteSheetBundle,
@@ -35,30 +40,51 @@ pub struct PlayerBundle {
     #[worldly]
     pub worldly: Worldly,
     pub ground_detection: GroundDetection,
-
     // The whole EntityInstance can be stored directly as an EntityInstance component
     #[from_entity_instance]
     entity_instance: EntityInstance,
+
 }
 
 
-fn move_player(
-    mut players: Query<(&mut Velocity, &GroundDetection), With<Player>>,
+
+//Responsible for moving character
+fn change_character_position(
     input: Res<Input<KeyCode>>,
+    mut character_controllers: Query<&mut KinematicCharacterController, With<Player>>
 ) {
-    for (mut velocity, ground_detection) in &mut players {
+    for mut character_controller in character_controllers.iter_mut() {
+        let right = if input.pressed(KeyCode::D) { 1. } else { 0. };
+        let left = if input.pressed(KeyCode::A) { 1. } else { 0. };
+        let distance = (right - left) * MOVEMENT_SPEED;
+        character_controller.translation = Some(Vec2::new(distance, -1.));
 
-        let right = if input.pressed(KeyCode::D) {1.} else {0.}; 
-        let left = if input.pressed(KeyCode::A) {1.} else {0.};
-        
-        velocity.linvel.x = (right-left) * MOVEMENT_SPEED;
-        
+
         if input.just_pressed(KeyCode::Space) {
-            velocity.linvel.y = 300.;
+            //ENTER JUMP STATE 
+            //IF IN JUMP STATE, LERP TOWARDS JUMP HEIGHT instead of just moving there instantly 
+            //EXIT JUMP STATE WHEN GROUNDED
+            character_controller.translation = Some(Vec2::new(0., 100.));
         }
-    } 
+    }
 }
 
+
+/* Read the character controller collisions stored in the character controller’s output. */
+fn modify_character_controller(
+    mut controllers: Query<(Entity, &KinematicCharacterControllerOutput)>,
+) {
+    for (entity, output) in &controllers {
+//        info!("Entity: {:?}, Output: {:?}", entity, output);
+    }
+}
+
+
+
+
+
+//This shit is copied straight from the ldtk example. It's in here because it tracks the player,
+//could probably be moved to a separate camera plugin. 
 const ASPECT_RATIO: f32 = 16. / 9.;
 
 #[allow(clippy::type_complexity)]

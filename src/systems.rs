@@ -18,7 +18,7 @@ pub fn setup_ldtk_world(mut commands: Commands, asset_server: Res<AssetServer>) 
     });
 }
 
-/// Spawns heron collisions for the walls of a level
+/// Spawns rapier collisions for the walls of a level
 ///
 /// You could just insert a ColliderBundle in to the WallBundle,
 /// but this spawns a different collider for EVERY wall tile.
@@ -220,6 +220,8 @@ pub fn spawn_ground_sensor(
     }
 }
 
+
+//These can be replaced by the kinematic controller when it's ready
 pub fn ground_detection(
     mut ground_sensors: Query<&mut GroundSensor>,
     mut collisions: EventReader<CollisionEvent>,

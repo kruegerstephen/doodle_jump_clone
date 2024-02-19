@@ -10,6 +10,9 @@ bevy = "0.12.1"
 bevy_ecs_ldtk = "0.9.0"
 bevy_ecs_tilemap = "0.12.0"
 bevy_rapier2d = "0.24.0"
+egui = "0.26.2"
+leafwing-input-manager = "0.11.2"
+seldom_state = "0.9.0"
 
 [profile.dev]
 opt-level = 1

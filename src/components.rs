@@ -15,6 +15,7 @@ pub struct ColliderBundle {
     pub friction: Friction,
     pub density: ColliderMassProperties,
     pub active_events: ActiveEvents,
+    pub controller: KinematicCharacterController,
 }
 
 #[derive(Clone, Default, Bundle, LdtkIntCell)]
@@ -24,9 +25,6 @@ pub struct SensorBundle {
     pub rotation_constraints: LockedAxes,
     pub active_events: ActiveEvents,
 }
-
-
-
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Default, Component)]
 pub struct Wall;
@@ -51,15 +49,16 @@ impl From<&EntityInstance> for ColliderBundle {
     fn from(entity_instance: &EntityInstance) -> ColliderBundle {
         let rotation_constraints = LockedAxes::ROTATION_LOCKED;
 
+        //MOVE TO Plugins??  
         match entity_instance.identifier.as_ref() {
             "Player" => ColliderBundle {
                 collider: Collider::cuboid(6., 14.),
-                rigid_body: RigidBody::Dynamic,
-                friction: Friction {
-                    coefficient: 0.5,
-                    combine_rule: CoefficientCombineRule::Min,
-                },
+                rigid_body: RigidBody::KinematicVelocityBased,
                 rotation_constraints,
+                controller: KinematicCharacterController{
+                    offset: CharacterLength::Absolute(0.5),
+                    ..Default::default()
+                },
                 ..Default::default()
             },
             "Goal" => ColliderBundle {

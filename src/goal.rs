@@ -3,7 +3,6 @@ use crate::player::Player;
 use bevy::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::prelude::*;
-use std::collections::HashSet;
 use crate::events::RestartLevelEvent;
 
 pub struct GoalPlugin;
@@ -27,6 +26,7 @@ pub struct GoalBundle {
 }
 
 
+// This is the most straightforward way I've found to do a custom collision check.
 pub fn handle_col(
     mut evts: EventReader<CollisionEvent>,
     mut restart_event: EventWriter<RestartLevelEvent>,
@@ -53,11 +53,7 @@ pub fn handle_col(
 
     for evt in evts.read() {
         if let CollisionEvent::Started(e1, e2, _) = evt {
-            println!("Collision event started");
-            println!("e1: {:?}, e2: {:?}", e1, e2);
-            println!("player_entity: {:?}, goal_entity: {:?}", player_entity, goal_entity);
-            println!("e1 == player_entity: {:?}, e2 == goal_entity: {:?}", *e1 == player_entity, *e2 == goal_entity);
-            println!("e2 == player_entity: {:?}, e1 == goal_entity: {:?}", *e2 == player_entity, *e1 == goal_entity);
+            //Probably a better way to do this?
             if (*e1 == player_entity && *e2 == goal_entity) || (*e1 == goal_entity && *e2 == player_entity) {
                 println!("Player and goal intersecting");
                 restart_event.send_default();

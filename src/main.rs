@@ -1,6 +1,7 @@
-use bevy::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
+use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
+use leafwing_input_manager::prelude::*;
 
 mod coin;
 mod components;
@@ -9,6 +10,7 @@ mod player;
 mod systems;
 mod events;
 mod respawn;
+
 
 fn main() {
     App::new()
@@ -28,10 +30,10 @@ fn main() {
         })
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         .add_plugins(RapierDebugRenderPlugin::default())
+        .add_plugins(InputManagerPlugin::<Action>::default())
         .add_plugins(events::EventPipelinePlugin)
         .add_systems(Startup, systems::setup_camera)
         .add_systems(Startup, systems::setup_ldtk_world)
-        .add_systems(Startup, setup_physics)
         .add_systems(Update, display_events)
         .add_systems(Update, systems::ground_detection)
         .add_systems(Update, systems::update_on_ground)
@@ -44,6 +46,14 @@ fn main() {
         .add_plugins(respawn::RespawnPlugin)
         .run();
 }
+
+// This is the list of "things in the game I want to be able to do based on input"
+#[derive(Actionlike, PartialEq, Eq, Hash, Clone, Copy, Debug, Reflect)]
+enum Action {
+    Run,
+    Jump,
+}
+
 
 pub fn display_events(
     mut collision_events: EventReader<CollisionEvent>,
@@ -62,12 +72,3 @@ pub fn display_events(
     }
 }
 
-pub fn setup_physics(mut commands: Commands) {
-    commands.spawn((
-        TransformBundle::from(Transform::from_xyz(0.0, 0.0, 0.0)),
-        RigidBody::Dynamic,
-        Collider::cuboid(10.0, 10.0),
-        ActiveEvents::COLLISION_EVENTS,
-        ContactForceEventThreshold(10.0),
-    ));
-}

@@ -1,3 +1,8 @@
+/*
+    This file contains the event pipeline for the game. 
+    Use it as an event bus. All events should be registered here.
+*/
+
 use bevy::prelude::*;
 
 
