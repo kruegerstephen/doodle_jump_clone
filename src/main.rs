@@ -10,6 +10,8 @@ mod player;
 mod systems;
 mod events;
 mod respawn;
+mod state_machine;
+mod actions;
 
 
 fn main() {
@@ -30,7 +32,6 @@ fn main() {
         })
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         .add_plugins(RapierDebugRenderPlugin::default())
-        .add_plugins(InputManagerPlugin::<Action>::default())
         .add_plugins(events::EventPipelinePlugin)
         .add_systems(Startup, systems::setup_camera)
         .add_systems(Startup, systems::setup_ldtk_world)
@@ -40,6 +41,7 @@ fn main() {
         .add_systems(Update, systems::spawn_wall_collision)
         .add_systems(Update, systems::spawn_ground_sensor)
         .register_ldtk_int_cell::<components::WallBundle>(1)
+        .add_plugins(state_machine::PlayerStateMachinePlugin)
         .add_plugins(coin::CoinPlugin)
         .add_plugins(player::PlayerPlugin)
         .add_plugins(goal::GoalPlugin)

@@ -64,7 +64,7 @@ fn change_character_position(
             //ENTER JUMP STATE 
             //IF IN JUMP STATE, LERP TOWARDS JUMP HEIGHT instead of just moving there instantly 
             //EXIT JUMP STATE WHEN GROUNDED
-            character_controller.translation = Some(Vec2::new(0., 100.));
+            character_controller.translation = Some(Vec2::new(0., JUMP_HEIGHT));
         }
     }
 }
