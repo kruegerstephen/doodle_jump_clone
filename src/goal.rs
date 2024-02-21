@@ -36,7 +36,7 @@ pub fn handle_col(
     
 
     let player_entity = match player_query.iter().next() {
-        Some(entity) => entity,
+        Some(entity) => {entity},
         None => {
             println!("No player entity found");
             return;

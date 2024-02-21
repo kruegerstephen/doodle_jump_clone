@@ -12,6 +12,7 @@ pub enum PlatformerAction {
     Move,
 
     Horizontal,
+    Falling,
 
     Jump,
     Heal,

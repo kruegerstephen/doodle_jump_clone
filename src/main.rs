@@ -1,6 +1,8 @@
+use actions::PlatformerAction;
 use bevy_ecs_ldtk::prelude::*;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
+use seldom_state::StateMachinePlugin;
 use leafwing_input_manager::prelude::*;
 
 mod coin;
@@ -18,6 +20,9 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugins(LdtkPlugin)
+        .add_plugins(StateMachinePlugin)
+        .add_plugins(InputManagerPlugin::<PlatformerAction>::default())
+        .add_plugins(state_machine::PlayerStateMachinePlugin)
         .insert_resource(RapierConfiguration {
             gravity: Vec2::new(0.0, -2000.0),
             ..Default::default()
@@ -41,7 +46,6 @@ fn main() {
         .add_systems(Update, systems::spawn_wall_collision)
         .add_systems(Update, systems::spawn_ground_sensor)
         .register_ldtk_int_cell::<components::WallBundle>(1)
-        .add_plugins(state_machine::PlayerStateMachinePlugin)
         .add_plugins(coin::CoinPlugin)
         .add_plugins(player::PlayerPlugin)
         .add_plugins(goal::GoalPlugin)
@@ -49,12 +53,6 @@ fn main() {
         .run();
 }
 
-// This is the list of "things in the game I want to be able to do based on input"
-#[derive(Actionlike, PartialEq, Eq, Hash, Clone, Copy, Debug, Reflect)]
-enum Action {
-    Run,
-    Jump,
-}
 
 
 pub fn display_events(
