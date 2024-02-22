@@ -12,7 +12,7 @@ impl Plugin for CoinPlugin {
 
 
 #[derive(Default, Component)] 
-struct Coin;
+pub struct Coin;
 
 #[derive(Default, Bundle, LdtkEntity)]
 pub struct CoinBundle {

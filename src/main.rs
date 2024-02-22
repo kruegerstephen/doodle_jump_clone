@@ -2,7 +2,6 @@ use actions::PlatformerAction;
 use bevy_ecs_ldtk::prelude::*;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
-use seldom_state::StateMachinePlugin;
 use leafwing_input_manager::prelude::*;
 
 mod coin;
@@ -20,9 +19,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugins(LdtkPlugin)
-        .add_plugins(StateMachinePlugin)
         .add_plugins(InputManagerPlugin::<PlatformerAction>::default())
-        .add_plugins(state_machine::PlayerStateMachinePlugin)
         .insert_resource(RapierConfiguration {
             gravity: Vec2::new(0.0, -2000.0),
             ..Default::default()

@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
-use bevy_ecs_ldtk::{prelude::*, utils::ldtk_pixel_coords_to_translation_pivoted};
-use crate::coin::Wallet;
+use bevy_ecs_ldtk::{
+    prelude::*,
+    utils::ldtk_pixel_coords_to_translation_pivoted,
+};
+
 
 use std::collections::HashSet;
 
@@ -15,7 +18,6 @@ pub struct ColliderBundle {
     pub friction: Friction,
     pub density: ColliderMassProperties,
     pub active_events: ActiveEvents,
-    pub controller: KinematicCharacterController,
 }
 
 #[derive(Clone, Default, Bundle, LdtkIntCell)]
@@ -55,10 +57,6 @@ impl From<&EntityInstance> for ColliderBundle {
                 collider: Collider::cuboid(6., 14.),
                 rigid_body: RigidBody::KinematicVelocityBased,
                 rotation_constraints,
-                controller: KinematicCharacterController{
-                    offset: CharacterLength::Absolute(0.5),
-                    ..Default::default()
-                },
                 ..Default::default()
             },
             "Goal" => ColliderBundle {
@@ -78,8 +76,7 @@ impl From<&EntityInstance> for ColliderBundle {
 
 
 impl From<IntGridCell> for SensorBundle {
-    fn from(int_grid_cell: IntGridCell) -> SensorBundle {
-        let rotation_constraints = LockedAxes::ROTATION_LOCKED;
+    fn from(_: IntGridCell) -> SensorBundle {
         SensorBundle::default()
     }
 }
