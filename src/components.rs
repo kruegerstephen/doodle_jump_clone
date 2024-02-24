@@ -55,7 +55,7 @@ impl From<&EntityInstance> for ColliderBundle {
         match entity_instance.identifier.as_ref() {
             "Player" => ColliderBundle {
                 collider: Collider::cuboid(6., 14.),
-                rigid_body: RigidBody::KinematicVelocityBased,
+                rigid_body: RigidBody::KinematicPositionBased,
                 rotation_constraints,
                 ..Default::default()
             },

@@ -13,6 +13,7 @@ mod events;
 mod respawn;
 mod state_machine;
 mod actions;
+mod player_components;
 
 
 fn main() {

@@ -1,7 +1,4 @@
 use crate::actions::PlatformerAction;
-use crate::coin::Wallet;
-use crate::components::ColliderBundle;
-use crate::components::GroundDetection;
 use bevy::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::prelude::*;
@@ -10,16 +7,10 @@ use statig::{
     prelude::*, InitializedStatemachine, StateOrSuperstate,
 
 };
-
-use std::char;
+use crate::player_components::*;
 use std::time::Duration;
-use bevy::time::Stopwatch;
 
 
-#[derive(Component, Default)]
-pub struct JumpDuration {
-    time: Stopwatch
-}
 
 const MOVEMENT_SPEED: f32 = 1.;
 
@@ -33,93 +24,14 @@ impl Plugin for PlayerPlugin {
             (
                 camera_fit_inside_current_level,
                 change_character_position,
-                modify_character_controller,
                 fall,
+                jump,
                 machine_events,
             ),
         )
         .register_ldtk_entity::<PlayerBundle>("Player");
     }
 }
-
-
-#[derive(Clone, Default, Copy, Eq, PartialEq, Debug, Component)]
-pub struct Player;
-
-#[derive(Default, Bundle, LdtkEntity)]
-pub struct PlayerBundle {
-    pub wallet: Wallet,
-    pub controller: KinematicCharacterController,
-    pub player_input: PlayerInput,
-    pub state: PlayerState,
-    pub jump_duration: JumpDuration,
-    #[sprite_sheet_bundle]
-    sprite_sheet_bundle: SpriteSheetBundle,
-    #[from_entity_instance]
-    pub collider_bundle: ColliderBundle,
-    pub player: Player,
-    #[worldly]
-    pub worldly: Worldly,
-    pub ground_detection: GroundDetection,
-    // The whole EntityInstance can be stored directly as an EntityInstance component
-    #[from_entity_instance]
-    entity_instance: EntityInstance,
-
-}
-
-
-#[derive(Bundle)]
-pub struct PlayerInput {
-    input: InputManagerBundle<PlatformerAction>
-}
-impl Default for PlayerInput {
-    fn default() -> Self {
-        use PlatformerAction::*;
-
-        let mut input_map = InputMap::default();
-
-        // basic movement
-        input_map.insert(KeyCode::W, Up);
-        input_map.insert(GamepadButtonType::DPadUp, Up);
-
-        input_map.insert(KeyCode::S, Down);
-        input_map.insert(GamepadButtonType::DPadDown, Down);
-
-        input_map.insert(KeyCode::A, Left);
-        input_map.insert(GamepadButtonType::DPadLeft, Left);
-
-        input_map.insert(
-            SingleAxis::symmetric(GamepadAxisType::LeftStickX, 0.1),
-            Horizontal,
-        );
-
-        input_map.insert(KeyCode::D, Right);
-        input_map.insert(GamepadButtonType::DPadRight, Right);
-
-        // Jump
-        input_map.insert(KeyCode::Space, PlatformerAction::Jump);
-        input_map.insert(GamepadButtonType::South, PlatformerAction::Jump);
-
-        input_map.insert(KeyCode::E, PlatformerAction::Dash);
-        input_map.insert(GamepadButtonType::RightTrigger2, PlatformerAction::Dash);
-
-        input_map.insert(KeyCode::Return, PlatformerAction::Pause);
-        input_map.insert(GamepadButtonType::Start, PlatformerAction::Pause);
-
-        input_map.insert(KeyCode::I, PlatformerAction::Menus);
-        input_map.insert(GamepadButtonType::Select, PlatformerAction::Menus);
-        input_map.set_gamepad(Gamepad { id: 0 });
-
-        Self {
-            input: InputManagerBundle::<PlatformerAction> {
-                input_map,
-                ..Default::default()
-            },
-        }
-    }
-}
-
-
 
 
 fn machine_events(
@@ -142,7 +54,6 @@ fn machine_events(
                 if let Some(last_jump) =
                     state_machine.0.last_jump
                 {
-                    println!("Jump state");
                     if (time.elapsed() - last_jump)
                         > Duration::from_millis(500)
                     {
@@ -162,14 +73,20 @@ fn machine_events(
         for (output, mut state_machine) in
             &mut controllers
         {
+            if time.elapsed().as_millis() % 1000 == 0 {
+                println!("state: {:?}", state_machine.0.state());
+            }
             match state_machine.0.state() {
                 State::Idle {} => {
                     if action_state.just_pressed(
                         PlatformerAction::Jump,
                     ) {
+                        println!("Jumping");
                         state_machine.0.handle(
                             &Event::Jump {
                                 event_time: time.elapsed(),
+                                rising: true,
+                                peak_reached: false,
                             },
                         );
                     }
@@ -195,14 +112,8 @@ fn machine_events(
                         }
                     }
                 }
-                State::Crouching {} => {
-                    // info!("crouching");
-                }
-                State::Healing {} => {
-                    // info!("healing");
-                }
                 State::Falling {} => {
-                    info!("falling");
+
                 }
             }
         }
@@ -210,41 +121,41 @@ fn machine_events(
 }
 
 fn fall(
-    mut commands: Commands,
-    mut controllers: Query<(
-        &mut KinematicCharacterController,
-        &KinematicCharacterControllerOutput,
-        &Velocity,
-        &mut PlayerState,
-        &ActionState<PlatformerAction>,
-    )>,
-    time: Res<Time>,
+    mut controllers: Query<&mut KinematicCharacterController, With<Player>>,
+    mut controller_outputs: Query<(Entity, &KinematicCharacterControllerOutput)>,
+    mut state_machine: Query<&mut PlayerState>,
 ) {
-    for (
-        mut controller,
-        output,
-        velocity,
-        mut state_machine,
-        action_state,
-    ) in &mut controllers
-    {
-        if let State::Falling {} = state_machine.0.state() {
-            if output.grounded {
-                state_machine.0.handle(&Event::Land);
-            } else {
-                println!("falling handler");
-                controller.translation =
-                    match controller.translation {
-                        Some(mut v) => {
-                            v.y = -2.0;
-                            Some(v)
-                        }
-                        None => Some(Vec2::new(0.0, -2.0)),
-                    };
-            }
-        }
+    for (_, output) in &mut controller_outputs {
+        println!("output: {:?}", output.grounded);
     }
+
+    for mut state in state_machine.iter_mut() {
+        match state.0.state() {
+            State::Falling {} => {
+                    for mut controller in controllers.iter_mut() {
+                        println!("controller: {:?}", controller.translation);
+                        controller.translation = match controller.translation {
+                            Some(mut v) => {
+                                v.y = -10.0;
+                                Some(v)
+                            }
+                            None => Some(Vec2::new(0.0, -10.0)),
+                        };
+                    }
+                for (_, output) in controller_outputs.iter() {
+                    println!("output: {:?}", output.grounded);
+                    if output.grounded {
+                        state.0.handle(&Event::Land);
+                    } else {
+
+                    }
+                }
+            }
+            _ => {}
+        }
+    }    
 }
+
 fn jump(
     mut commands: Commands,
     mut controllers: Query<(
@@ -263,15 +174,16 @@ fn jump(
         mut state_machine,
         action_state,
     ) in &mut controllers
-    {
+    { 
         if action_state
             .just_released(PlatformerAction::Jump)
         {
+            println!("transitioning to falling");
             state_machine.0.handle(&Event::Fall);
         } else if let State::Jumping {} =
             state_machine.0.state()
         {
-                println!("jumping handler");
+            println!("jumping handler");
             controller.translation =
                 match controller.translation {
                     Some(mut v) => {
@@ -284,125 +196,6 @@ fn jump(
     }
 }
 
-#[derive(Default)]
-struct PlayerStateMachine {
-    last_jump: Option<Duration>,
-}
-#[derive(Debug)]
-pub enum Event {
-    Jump { event_time: Duration },
-    Heal,
-    Crouch,
-    Land,
-    Fall,
-}
-
-#[derive(Component)]
-pub struct PlayerState(
-    InitializedStatemachine<PlayerStateMachine>,
-);
-impl Default for PlayerState {
-    fn default() -> Self {
-        Self(
-            PlayerStateMachine::default()
-                .state_machine()
-                .init(),
-        )
-    }
-}
-
-
-#[state_machine(
-    initial = "State::idle()",
-    on_dispatch = "Self::on_dispatch",
-    on_transition = "Self::on_transition",
-    state(derive(Debug)),
-    superstate(derive(Debug))
-)]
-impl PlayerStateMachine {
-    fn on_transition(
-        &mut self,
-        source: &State,
-        target: &State,
-    ) {
-        info!(
-            "transitioned from `{:?}` to `{:?}`",
-            source, target
-        );
-    }
-
-    fn on_dispatch(
-        &mut self,
-        state: StateOrSuperstate<PlayerStateMachine>,
-        event: &Event,
-    ) {
-        info!(
-            "dispatched `{:?}` to `{:?}`",
-            event, state
-        );
-    }
-    #[state]
-    fn idle(&mut self, event: &Event) -> Response<State> {
-        match event {
-            Event::Jump { event_time } => {
-                self.last_jump = Some(*event_time);
-                Transition(State::jumping())
-            }
-            Event::Heal => Transition(State::healing()),
-            Event::Crouch => Transition(State::crouching()),
-            Event::Land => Transition(State::idle()),
-            Event::Fall => Transition(State::falling()),
-        }
-    }
-    #[state]
-    fn jumping(event: &Event) -> Response<State> {
-        match event {
-            Event::Jump { event_time } => {
-                Transition(State::jumping())
-            }
-            Event::Heal => Transition(State::healing()),
-            Event::Crouch => Transition(State::crouching()),
-            Event::Land => Transition(State::idle()),
-            Event::Fall => Transition(State::falling()),
-        }
-    }
-    #[state]
-    fn healing(event: &Event) -> Response<State> {
-        match event {
-            Event::Jump { event_time } => {
-                Transition(State::jumping())
-            }
-            Event::Heal => Transition(State::healing()),
-            Event::Crouch => Transition(State::crouching()),
-            Event::Land => Transition(State::idle()),
-            Event::Fall => Transition(State::falling()),
-        }
-    }
-    #[state]
-    fn crouching(event: &Event) -> Response<State> {
-        match event {
-            Event::Jump { event_time } => {
-                Transition(State::jumping())
-            }
-            Event::Heal => Transition(State::healing()),
-            Event::Crouch => Transition(State::crouching()),
-            Event::Land => Transition(State::idle()),
-            Event::Fall => Transition(State::falling()),
-        }
-    }
-    #[state]
-    fn falling(event: &Event) -> Response<State> {
-        match event {
-            Event::Jump { event_time } => {
-                Transition(State::jumping())
-            }
-            Event::Heal => Transition(State::healing()),
-            Event::Crouch => Transition(State::crouching()),
-            Event::Land => Transition(State::idle()),
-            Event::Fall => Transition(State::falling()),
-        }
-    }
-}
 
 //Responsible for moving character
 fn change_character_position(
@@ -411,7 +204,7 @@ fn change_character_position(
     mut character_controllers: Query<&mut KinematicCharacterController, With<Player>>,
     mut state: Query<&mut PlayerState>,
     player_query: Query<&mut Transform,  With<Player>>,
-    mut jump_duration: Query<&mut JumpDuration, With<Player>>,
+    mut jump_duration: Query<&mut JumpState, With<Player>>,
     time: Res<Time>, 
 ) {
     if let Ok(Transform {
@@ -463,18 +256,16 @@ fn change_character_position(
                 }
                 State::Jumping {} => {
                     jump.time.tick(time.delta());
-                    let jump_height = lerp(char_pos.y, 2., jump.time.elapsed_secs() / 0.3);
+                    let jump_height = 10.; 
                     println!("jump high: {}", jump_height);
                     println!("elapsed: {}", jump.time.elapsed_secs());
                     println!("distance: {}", distance);
                     height = jump_height;
                 }
-                State::Crouching {} => {}
                 State::Falling {} => {
                     height = char_pos.y - 0.1;
                     jump.time.reset();
                 }
-                State::Healing {} => {}
             }
         }
 
@@ -484,17 +275,93 @@ fn change_character_position(
 }
 
 
-fn lerp(start: f32, end: f32, t: f32) -> f32 {
-    start + (end - start) * t
+#[derive(Default)]
+struct PlayerStateMachine {
+    last_jump: Option<Duration>,
+}
+#[derive(Debug)]
+pub enum Event {
+    Jump { event_time: Duration, rising: bool, peak_reached: bool},
+    Land,
+    Fall,
+}
+
+#[derive(Component)]
+pub struct PlayerState(
+    InitializedStatemachine<PlayerStateMachine>,
+);
+
+impl Default for PlayerState {
+    fn default() -> Self {
+        Self(
+            PlayerStateMachine::default()
+                .state_machine()
+                .init(),
+        )
+    }
 }
 
 
-/* Read the character controller collisions stored in the character controller’s output. */
-fn modify_character_controller(
-    mut controllers: Query<(Entity, &KinematicCharacterControllerOutput)>,
-) {
-    for (entity, output) in &controllers {
-        //        info!("Entity: {:?}, Output: {:?}", entity, output);
+#[state_machine(
+    initial = "State::idle()",
+    on_dispatch = "Self::on_dispatch",
+    on_transition = "Self::on_transition",
+    state(derive(Debug)),
+    superstate(derive(Debug))
+)]
+impl PlayerStateMachine {
+    fn on_transition(
+        &mut self,
+        source: &State,
+        target: &State,
+    ) {
+        info!(
+            "transitioned from `{:?}` to `{:?}`",
+            source, target
+        );
+    }
+
+    fn on_dispatch(
+        &mut self,
+        state: StateOrSuperstate<PlayerStateMachine>,
+        event: &Event,
+    ) {
+        info!(
+            "dispatched `{:?}` to `{:?}`",
+            event, state
+        );
+    }
+    #[state]
+    fn idle(&mut self, event: &Event) -> Response<State> {
+        match event {
+            Event::Jump { event_time, peak_reached, rising} => {
+                self.last_jump = Some(*event_time);
+                Transition(State::jumping())
+            }
+            Event::Land => Transition(State::idle()),
+            Event::Fall => Transition(State::falling()),
+        }
+    }
+    #[state]
+    fn jumping(event: &Event) -> Response<State> {
+        match event {
+            Event::Jump { event_time, peak_reached, rising} => {
+                Transition(State::jumping())
+            }
+            Event::Land => Transition(State::idle()),
+            Event::Fall => Transition(State::falling()),
+        }
+    }
+    #[state]
+    fn falling(event: &Event) -> Response<State> {
+        match event {
+            Event::Jump { event_time, peak_reached, rising} => {
+                Transition(State::jumping())
+            }
+            Event::Land => Transition(State::idle()),
+            Event::Fall => Transition(State::falling()),
+
+        }
     }
 }
 
